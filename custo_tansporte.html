@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt">
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 14px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+</style>
+<body>
+<h1>Porcentagem do salário mínimo gasto com transporte público no município de São Paulo</h1>
+<h2>Autores: Leonardo Leite & Wesley Seidel</h2>
+<script src="http://d3js.org/d3.v3.js"></script>
+<script>
+
+var margin = {top: 20, right: 80, bottom: 30, left: 50},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var parseDate = d3.time.format("%Y%m").parse;
+
+var x = d3.time.scale()
+    .range([0, width]);
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var color = d3.scale.category10();
+
+var months = {
+ "Jan":"Jan",
+ "Feb":"Fev",
+ "Mar":"Mar",
+ "Apr":"Abr",
+ "May":"Mai",
+ "Jun":"Jun",
+ "Jul":"Jul",
+ "Aug":"Ago",
+ "Sep":"Set",
+ "Oct":"Out",
+ "Nov":"Nov",
+ "Dec":"Dez"
+}
+
+function traduz_data(data_str_en) {
+    data_str_pt = data_str_en;
+    for (var key in months) {
+        data_str_pt = data_str_pt.replace(key, months[key])
+    }
+    return data_str_pt;
+}
+
+function format_date(date) {
+    var format = d3.time.format("%b %Y");
+    date_str_en = format(date)
+    date_str_pt = traduz_data(date_str_en)
+    return date_str_pt
+}
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+    .tickFormat(function(date){return format_date(date)});
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+var line = d3.svg.line()
+    .interpolate("basis")
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d.temperature); });
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+d3.tsv("data.tsv", function(error, data) {
+  color.domain(d3.keys(data[0]).filter(function(key) { return key !== "date"; }));
+
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+  });
+
+  var cities = color.domain().map(function(name) {
+    return {
+      name: name,
+      values: data.map(function(d) {
+        return {date: d.date, temperature: +d[name]};
+      })
+    };
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date }));
+
+  y.domain([0, 100]);
+//  y.domain([
+//    d3.min(cities, function(c) { return d3.min(c.values, function(v) { return v.temperature; }); }),
+//    d3.max(cities, function(c) { return d3.max(c.values, function(v) { return v.temperature; }); })
+//  ]);
+
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Porcentagem");
+
+  var city = svg.selectAll(".city")
+      .data(cities)
+    .enter().append("g")
+      .attr("class", "city");
+
+  city.append("path")
+      .attr("class", "line")
+      .attr("d", function(d) { return line(d.values); })
+      .style("stroke", function(d) { return color(d.name); });
+
+  city.append("text")
+      .datum(function(d) { return {name: d.name, value: d.values[d.values.length - 1]}; })
+      .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.temperature) + ")"; })
+      .attr("x", 3)
+      .attr("dy", ".35em")
+      .text(function(d) { return d.name; });
+});
+
+</script>
+
+<p>Perfil 1 - Trabalhador que pega apenas ônibus, 2 viagens por dia.</p>
+<p>Perfil 2 - Trabalhador que pega ônibus e metrô, 2 viagens por dia.</p>
+<p>Perfil 3 - Trabalhador-estudante que pega ônibus e metrô, 3 viagens por dia.</p>
+
+<p>Considerações:
+<li>
+<ul>Uso em 24 dias por mês (pessoa trabalha de segunda à sábado).</ul>
+<ul>Na viagem ônibus + metrô, paga-se preço inteiro do ônibus e mais meia-passagem no metrô.</ul>
+<ul>Como não temos os dados sobre os meses de aumentos do metrô, consideramos que o metrô sempre sobe no mesmo mês em que o ônibus sobe.</ul> 
+<ul>Nos anos em que o ônibus não aumentou, consideramos que o aumento do metrô foi em junho.</ul>
+<ul>Viagens do Perfil 3: de casa pro trabalho, do trabalho pra faculdade, e da faculdade pra casa.</ul> 
+<ul>Perfil 3 paga meia.</ul>
+</li>
+</p>
+
+<p>Fontes de dados:
+<li>
+<ul>http://www.sptrans.com.br/a_sptrans/tarifas.aspx</ul>
+<ul>http://www.terra.com.br/noticias/infograficos/tarifas-metro-onibus-sp/</ul>
+</li>
+</p>
+
+<p>Agradecimentos a Diego Rabatone!</p>
+
+<p>Este gráfico foi produzido no "Transparência HackDay Transporte Público", em 16/06/13.</p>
+
+</body>
+<html>
+
+
