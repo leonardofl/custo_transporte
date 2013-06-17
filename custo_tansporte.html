@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt">
 <meta charset="utf-8">
+
+<!--
+Código-fonte original:
+http://bl.ocks.org/mbostock/3884955
+-->
+
 <style>
 
 body {
@@ -158,6 +164,8 @@ d3.tsv("data.tsv", function(error, data) {
 <p>Perfil 2 - Trabalhador que pega ônibus e metrô, 2 viagens por dia.</p>
 <p>Perfil 3 - Trabalhador-estudante que pega ônibus e metrô, 3 viagens por dia.</p>
 
+<p><a href="data.tsv">Dados do gráfico em forma tabular.</a></p>
+
 <p>Considerações:
 <li>
 <ul>Uso em 24 dias por mês (pessoa trabalha de segunda à sábado).</ul>
@@ -166,6 +174,7 @@ d3.tsv("data.tsv", function(error, data) {
 <ul>Nos anos em que o ônibus não aumentou, consideramos que o aumento do metrô foi em junho.</ul>
 <ul>Viagens do Perfil 3: de casa pro trabalho, do trabalho pra faculdade, e da faculdade pra casa.</ul> 
 <ul>Perfil 3 paga meia.</ul>
+<ul>O salário mínimo utilizado é o salário mínimo nacional.</ul>
 </li>
 </p>
 
