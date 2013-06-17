@@ -93,7 +93,7 @@ var yAxis = d3.svg.axis()
 var line = d3.svg.line()
     .interpolate("basis")
     .x(function(d) { return x(d.date); })
-    .y(function(d) { return y(d.temperature); });
+    .y(function(d) { return y(d.porcentagem); });
 
 var svg = d3.select("body").append("svg")
     .attr("width", width + margin.left + margin.right)
@@ -112,7 +112,7 @@ d3.tsv("data.tsv", function(error, data) {
     return {
       name: name,
       values: data.map(function(d) {
-        return {date: d.date, temperature: +d[name]};
+        return {date: d.date, porcentagem: +d[name]};
       })
     };
   });
@@ -121,8 +121,8 @@ d3.tsv("data.tsv", function(error, data) {
 
   y.domain([0, 100]);
 //  y.domain([
-//    d3.min(cities, function(c) { return d3.min(c.values, function(v) { return v.temperature; }); }),
-//    d3.max(cities, function(c) { return d3.max(c.values, function(v) { return v.temperature; }); })
+//    d3.min(cities, function(c) { return d3.min(c.values, function(v) { return v.porcentagem; }); }),
+//    d3.max(cities, function(c) { return d3.max(c.values, function(v) { return v.porcentagem; }); })
 //  ]);
 
   svg.append("g")
@@ -140,19 +140,19 @@ d3.tsv("data.tsv", function(error, data) {
       .style("text-anchor", "end")
       .text("Porcentagem");
 
-  var city = svg.selectAll(".city")
+  var profile = svg.selectAll(".profile")
       .data(cities)
     .enter().append("g")
-      .attr("class", "city");
+      .attr("class", "profile");
 
-  city.append("path")
+  profile.append("path")
       .attr("class", "line")
       .attr("d", function(d) { return line(d.values); })
       .style("stroke", function(d) { return color(d.name); });
 
-  city.append("text")
+  profile.append("text")
       .datum(function(d) { return {name: d.name, value: d.values[d.values.length - 1]}; })
-      .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.temperature) + ")"; })
+      .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.porcentagem) + ")"; })
       .attr("x", 3)
       .attr("dy", ".35em")
       .text(function(d) { return d.name; });
@@ -189,7 +189,7 @@ d3.tsv("data.tsv", function(error, data) {
 
 <p>Este gráfico foi produzido no "Transparência HackDay Transporte Público", em 16/06/13.</p>
 
-<p>Código-fonte: https://github.com/leonardofl/custo_transporte</p>
+<p>Código-fonte: <a href="https://github.com/leonardofl/custo_transporte">https://github.com/leonardofl/custo_transporte</a></p>
 
 </body>
 <html>
