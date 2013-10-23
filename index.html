@@ -37,18 +37,34 @@ body {
 <script src="http://d3js.org/d3.v3.js"></script>
 <script>
 
+// d3js API reference:
+// https://github.com/mbostock/d3/wiki/API-Reference
+//
+// Good tutorial:
+// http://pothibo.com/2013/09/d3-js-how-to-handle-dynamic-json-data/
+
 var margin = {top: 20, right: 80, bottom: 30, left: 50},
     width = 960 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
 
+// d3.time.format(specifier) constructs a new local time formatter 
+// parseDate is a function able to parse dates in the format "%Y%m"
 var parseDate = d3.time.format("%Y%m").parse;
 
+// d3.time.scale() builds the time scale attributed to x
+// x.range() sets "the amount of pixels you wish to cover with the scale"
+// x.domain is still going to be defined
 var x = d3.time.scale()
     .range([0, width]);
 
+// y is similar to x, but it is a linear scale, not a time scale.
+// You may also notice that the scale in the y-axis is inverted. 
+// This is because SVG’s y-coordinate is inverted. 
+// 0 is at the top of the graph while the height is at the bottom.
 var y = d3.scale.linear()
     .range([height, 0]);
 
+// d3.scale.category10 - construct an ordinal scale with ten categorical colors.
 var color = d3.scale.category10();
 
 var months = {
@@ -66,6 +82,7 @@ var months = {
  "Dec":"Dez"
 }
 
+// translates "19 Dec" to "19 Dez", for instance
 function traduz_data(data_str_en) {
     data_str_pt = data_str_en;
     for (var key in months) {
@@ -74,41 +91,79 @@ function traduz_data(data_str_en) {
     return data_str_pt;
 }
 
+// parse:  string -> date
+// format:   date -> string
+
 function format_date(date) {
-    var format = d3.time.format("%b %Y");
+    var format = d3.time.format("%b %Y"); // %b is abbreviated month name
+    // format(date) formats the specified date, returning the corresponding string. The date must be a JavaScript Date object.
     date_str_en = format(date)
     date_str_pt = traduz_data(date_str_en)
     return date_str_pt
 }
 
+// builds an axis and set some properties: scale, orient and tickFormat
 var xAxis = d3.svg.axis()
     .scale(x)
     .orient("bottom")
-    .tickFormat(function(date){return format_date(date)});
+    .tickFormat(format_date);
+// tickFormat(function) will define how the values will be printed along the axis.
+// function receives a value (over the axis) and returns how it must be printed.
 
 var yAxis = d3.svg.axis()
     .scale(y)
     .orient("left");
 
-var line = d3.svg.line()
-    .interpolate("basis")
-    .x(function(d) { return x(d.date); })
+var line = d3.svg.line() // Constructs a new line generator
+    .interpolate("basis") // sets interpolation mode: "basis" - a B-spline, with control point duplication on the ends.
+    .x(function(d) { return x(d.date); }) // sets the x-accessor
     .y(function(d) { return y(d.porcentagem); });
+// accessors are invoked for each element in the data array passed to the line generator (to be passed yet)
+// default accessor would assume that each input element is a two-element array of numbers (x is d[0] and y is d[1])
 
 var svg = d3.select("body").append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
-  .append("g")
+  .append("g") // g is group in SVG
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+// The transform attribute defines a list of transform definitions that are applied to an element and the element's children. 
+// translate: This transform definition specifies a translation ("translação") by x and y. 
+// https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+// obs: append returns the new selection containing the appended elements
 
-d3.tsv("data.tsv", function(error, data) {
+// d3.tsv(path[,accessor],callback)
+// Accessor function: optional function used to process/format data.
+// Callback function: called when data is ready -- here is where you create your chart.
+// http://tonygarcia.me/slides/d3chartintro/#chart-data
+// strange thing: in API tsv is documented as d3.tsv(url[, accessor][, callback])
+// what suggests callback is optional and that f is the accessor in csv(f)
+
+// in this case d3.tsv(url, callback)
+d3.tsv("data.tsv", function(error, data) { // and here starts the accessor giant function...
+
+  // data is a json object containing all the data already retrieved from the tsv
+
+  // color is the color scale; range is already defined; now setting domain
+  // Domain is the start and end of your dataset. It can be any kind of value that can be compared in javascript. 
+  // d3.keys - Returns an array containing the property names of the specified object
+  // data[0] is the first tsv row: "date	Perfil 1	Perfil 2	Perfil 3"
+  // the filter is to exclude the "data" head
+  // summary: this line attributes a different color to each "perfil"
   color.domain(d3.keys(data[0]).filter(function(key) { return key !== "date"; }));
 
+  // transforms strings in dates
   data.forEach(function(d) {
     d.date = parseDate(d.date);
   });
 
-  var cities = color.domain().map(function(name) {
+  // domain() is a getter, it will retrieve [Perfil1, Perfil2, Perfil3]
+  // array.map(f) returns an array whose elements are f applied to the correspondent element in array
+  // so profiles is an array whose each element is a json in the format { "name" : PerfilX, "values" : values},
+  // where values is an array whose each element is in format { "date" : data, "porcentagem" : porcentagem }
+  // so, profiles is something like
+  // { name : Perfil1, values : { { date : 19951, porcentagem : 24}, { date : 19956, porcentagem : 31} }, ...
+  // the "+" is to convert to int
+  var profiles = color.domain().map(function(name) {
     return {
       name: name,
       values: data.map(function(d) {
@@ -117,23 +172,25 @@ d3.tsv("data.tsv", function(error, data) {
     };
   });
 
+  // d3.extent(data_array, accessor_function) finds the minimum and maximum value in data_array.
+  // this line atributes as the x domain the interval between the min date and the max date.
   x.domain(d3.extent(data, function(d) { return d.date }));
 
-  y.domain([0, 100]);
-//  y.domain([
-//    d3.min(cities, function(c) { return d3.min(c.values, function(v) { return v.porcentagem; }); }),
-//    d3.max(cities, function(c) { return d3.max(c.values, function(v) { return v.porcentagem; }); })
-//  ]);
+  y.domain([0, 100]); // from 0% to 100%
 
   svg.append("g")
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis);
-
+  // call invokes the specified function once, passing to the function the current selection. 
+  // The call operator always returns the current selection, regardless of the return value of the specified function. 
+  // The call operator is identical to invoking a function by hand; but it makes it easier to use method chaining. 
+  // and axis(selection) applies the axis to a selection or transition. The selection must contain an SVG or G element
+  
   svg.append("g")
       .attr("class", "y axis")
       .call(yAxis)
-    .append("text")
+    .append("text") // apends text "Porcentagem"
       .attr("transform", "rotate(-90)")
       .attr("y", 6)
       .attr("dy", ".71em")
@@ -141,15 +198,31 @@ d3.tsv("data.tsv", function(error, data) {
       .text("Porcentagem");
 
   var profile = svg.selectAll(".profile")
-      .data(cities)
-    .enter().append("g")
+      .data(profiles) 
+    .enter().append("g") 
       .attr("class", "profile");
+  // data(profiles) bounds data (in this case profiles) for a group of svg elements 
+  // (each position of profiles to a different svg element whose class is .profile).
+  // But in the beggining there is no .profile elements.
+  // Once your data is bound to your selection, 
+  // enter() will return all the values for which no node .profile could be found.
+  // After that, it’s your job to append a new element ("g") and set the proper attribute to that object. 
+  // At the end, profile is a svg selection (with all the 3 generated .profile elements, that are g elements)
 
-  profile.append("path")
+  // selection.append appends a new element with the specified name as the last child of each element in the current selection
+  // in this case: for each g with class .profile appends a path
+  profile.append("path") // path it is a line, the graphic's curves themselves (we have 3)
       .attr("class", "line")
-      .attr("d", function(d) { return line(d.values); })
+      .attr("d", function(d) { return line(d.values); }) // line() is a line generator that we have previously defined
       .style("stroke", function(d) { return color(d.name); });
+  // The  d attribute is actually a string which contains a series of path descriptions
+  // d in function(d) is the data associated to the svg node! (a g with class .profile)
+  // color is a scale that we built.
+  // append returns a new selection containing the appended elements 
 
+  // datum(v) sets the bound data for each selected element.
+  // in this case attributes to each g the json {name:profileX, value:<last value of profileX>}
+  // this json is the d in the attr and text lines
   profile.append("text")
       .datum(function(d) { return {name: d.name, value: d.values[d.values.length - 1]}; })
       .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.porcentagem) + ")"; })
